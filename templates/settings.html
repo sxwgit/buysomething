@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}系统设置 - 采购管理系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <!-- Import section -->
+        <div class="card mb-3">
+            <div class="card-header">导入历史数据</div>
+            <div class="card-body">
+                <input type="file" class="form-control mb-2" id="import-file" accept=".xlsx,.xls">
+                <button class="btn btn-primary btn-sm" id="btn-import">导入 Excel</button>
+                <div id="import-result" class="mt-2" style="display:none"></div>
+            </div>
+        </div>
+
+        <!-- Change password -->
+        <div class="card mb-3">
+            <div class="card-header">修改管理员密码</div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <input type="password" class="form-control form-control-sm" id="old-pwd" placeholder="当前密码">
+                </div>
+                <div class="mb-2">
+                    <input type="password" class="form-control form-control-sm" id="new-pwd" placeholder="新密码">
+                </div>
+                <div class="mb-2">
+                    <input type="password" class="form-control form-control-sm" id="confirm-pwd" placeholder="确认新密码">
+                </div>
+                <button class="btn btn-primary btn-sm" id="btn-change-pwd">修改密码</button>
+                <div id="pwd-result" class="mt-2" style="display:none"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <!-- Dropdown options management -->
+        <div class="card">
+            <div class="card-header">下拉选项管理</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <select class="form-select form-select-sm" id="option-category">
+                        <option value="asset_category">资产分类</option>
+                        <option value="department">部门</option>
+                        <option value="status">采购状态</option>
+                    </select>
+                </div>
+                <table class="table table-sm table-bordered">
+                    <thead><tr><th>选项值</th><th>排序</th><th>操作</th></tr></thead>
+                    <tbody id="options-body"></tbody>
+                </table>
+                <div class="input-group input-group-sm mt-2">
+                    <input type="text" class="form-control" id="new-option-value" placeholder="新增选项">
+                    <button class="btn btn-outline-primary" id="btn-add-option">添加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Dropdown options management
+async function loadOptions() {
+    const cat = document.getElementById('option-category').value;
+    const res = await fetch(`/api/options/${cat}`);
+    const options = await res.json();
+    const tbody = document.getElementById('options-body');
+    tbody.innerHTML = options.map(o => `
+        <tr>
+            <td><input type="text" class="form-control form-control-sm" value="${o.value}" data-id="${o.id}" data-field="value"></td>
+            <td><input type="number" class="form-control form-control-sm" value="${o.sort_order}" data-id="${o.id}" data-field="sort_order" style="width:70px"></td>
+            <td>
+                <button class="btn btn-outline-primary btn-sm" onclick="updateOption(${o.id})">保存</button>
+                <button class="btn btn-outline-danger btn-sm" onclick="deleteOption(${o.id})">删除</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+document.getElementById('option-category').addEventListener('change', loadOptions);
+document.getElementById('btn-add-option').addEventListener('click', async function() {
+    const cat = document.getElementById('option-category').value;
+    const val = document.getElementById('new-option-value').value.trim();
+    if (!val) return;
+    await fetch('/api/options', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({category: cat, value: val}),
+    });
+    document.getElementById('new-option-value').value = '';
+    loadOptions();
+});
+
+async function updateOption(id) {
+    const row = document.querySelector(`input[data-id="${id}"]`).closest('tr');
+    const value = row.querySelector('[data-field="value"]').value;
+    const sort_order = parseInt(row.querySelector('[data-field="sort_order"]').value) || 0;
+    await fetch(`/api/options/${id}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({value, sort_order}),
+    });
+    loadOptions();
+}
+
+async function deleteOption(id) {
+    if (!confirm('确定删除该选项？')) return;
+    await fetch(`/api/options/${id}`, {method: 'DELETE'});
+    loadOptions();
+}
+
+// Excel import
+document.getElementById('btn-import').addEventListener('click', async function() {
+    const fileInput = document.getElementById('import-file');
+    if (!fileInput.files.length) { alert('请选择文件'); return; }
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    try {
+        const res = await fetch('/api/import/excel', {method: 'POST', body: formData});
+        const data = await res.json();
+        const el = document.getElementById('import-result');
+        el.style.display = '';
+        if (res.ok) {
+            let html = `<div class="alert alert-success">成功导入 ${data.imported} 条记录</div>`;
+            if (data.errors && data.errors.length > 0) {
+                html += `<div class="alert alert-warning"><strong>${data.total_errors} 条错误:</strong><br>${data.errors.join('<br>')}</div>`;
+            }
+            el.innerHTML = html;
+        } else {
+            el.innerHTML = `<div class="alert alert-danger">${data.msg}</div>`;
+        }
+    } catch(e) {
+        document.getElementById('import-result').style.display = '';
+        document.getElementById('import-result').innerHTML = `<div class="alert alert-danger">导入失败: ${e.message}</div>`;
+    }
+});
+
+// Password change
+document.getElementById('btn-change-pwd').addEventListener('click', async function() {
+    const oldPwd = document.getElementById('old-pwd').value;
+    const newPwd = document.getElementById('new-pwd').value;
+    const confirmPwd = document.getElementById('confirm-pwd').value;
+    const el = document.getElementById('pwd-result');
+    el.style.display = '';
+    if (newPwd !== confirmPwd) {
+        el.innerHTML = '<div class="alert alert-warning">两次输入的新密码不一致</div>';
+        return;
+    }
+    try {
+        const res = await fetch('/api/admin/change-password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({old_password: oldPwd, new_password: newPwd}),
+        });
+        const data = await res.json();
+        if (res.ok) {
+            el.innerHTML = '<div class="alert alert-success">密码修改成功</div>';
+        } else {
+            el.innerHTML = `<div class="alert alert-danger">${data.msg}</div>`;
+        }
+    } catch(e) {
+        el.innerHTML = `<div class="alert alert-danger">修改失败: ${e.message}</div>`;
+    }
+});
+
+loadOptions();
+</script>
+{% endblock %}

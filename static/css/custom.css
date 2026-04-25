@@ -1,0 +1,7 @@
+body { font-size: 14px; }
+.card { box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+table.table-sm th, table.table-sm td { white-space: nowrap; font-size: 13px; padding: 6px 8px; }
+.modal-body .form-label { font-size: 13px; font-weight: 500; }
+td.text-wrap { white-space: normal; max-width: 200px; }
+.navbar-brand { font-weight: 600; }
+#procurement-table_wrapper .dataTables_filter, #procurement-table_wrapper .dataTables_length { display: none; }

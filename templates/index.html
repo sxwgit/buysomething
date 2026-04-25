@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}采购列表 - 采购管理系统{% endblock %}
+
+{% block content %}
+<!-- Filter bar -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto">
+                <select class="form-select form-select-sm" id="filter-year">
+                    <option value="">全部年份</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <select class="form-select form-select-sm" id="filter-month">
+                    <option value="">全部月份</option>
+                    {% for m in range(1, 13) %}<option value="{{ m }}">{{ m }}月</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <select class="form-select form-select-sm" id="filter-dept">
+                    <option value="">全部部门</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <select class="form-select form-select-sm" id="filter-status">
+                    <option value="">全部状态</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <input type="text" class="form-control form-control-sm" id="filter-keyword" placeholder="搜索物品/人员/厂家">
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary btn-sm" id="btn-search">查询</button>
+                <button class="btn btn-outline-secondary btn-sm" id="btn-reset">重置</button>
+            </div>
+            <div class="col-auto ms-auto admin-only" style="display:none">
+                <button class="btn btn-success btn-sm" id="btn-add">新增采购申请</button>
+                <button class="btn btn-outline-primary btn-sm" id="btn-batch-status" disabled>批量更新状态</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data table -->
+<div class="card">
+    <div class="card-body">
+        <table id="procurement-table" class="table table-sm table-hover" style="width:100%">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="check-all"></th>
+                    <th>年份</th><th>月份</th><th>资产分类</th><th>物品名称</th>
+                    <th>生产厂家</th><th>物品型号</th><th>数量</th><th>单价</th><th>总价</th>
+                    <th>需求部门</th><th>需求人</th><th>工号</th><th>资产编码</th>
+                    <th>申请原因</th><th>备注</th><th>状态</th><th>操作</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal fade" id="formModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="formModalLabel">新增采购申请</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-id">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">采购年份 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="f-year" required></select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">采购月份 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="f-month" required>
+                            {% for m in range(1, 13) %}<option value="{{ m }}">{{ m }}月</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">资产分类 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="f-category" required></select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">物品名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="f-item" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">生产厂家</label>
+                        <input type="text" class="form-control" id="f-manufacturer">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">物品型号</label>
+                        <input type="text" class="form-control" id="f-model">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">预算数量 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="f-qty" min="1" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">预计单价 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="f-price" step="0.01" min="0" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">总价</label>
+                        <input type="text" class="form-control" id="f-total" readonly>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">需求部门 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="f-dept" required></select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">需求人姓名 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="f-name" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">需求人工号 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="f-id" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">资产编码</label>
+                        <input type="text" class="form-control" id="f-asset-code">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">申请原因 <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="f-reason" rows="2" required></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" id="f-remark" rows="2"></textarea>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">采购状态 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="f-status" required></select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="btn-save">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Batch Status Modal -->
+<div class="modal fade" id="batchModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">批量更新状态</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <select class="form-select" id="batch-status"></select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="btn-batch-confirm">确认</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/procurement.js"></script>
+{% endblock %}
