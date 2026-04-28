@@ -3,20 +3,25 @@
 
 {% block content %}
 <div class="row">
-    <div class="col-md-6">
-        <!-- Import section -->
-        <div class="card mb-3">
-            <div class="card-header">导入历史数据</div>
+        <div class="col-md-6">
+            <!-- Import section -->
+            <div class="card mb-3">
+            <div class="card-header">导入与导出数据</div>
             <div class="card-body">
+                <div class="d-flex gap-2 flex-wrap mb-3">
+                    <a class="btn btn-outline-secondary btn-sm" href="/api/import/template">下载导入模板</a>
+                    <a class="btn btn-outline-success btn-sm" href="/api/import/export-data">导出全部采购数据</a>
+                </div>
                 <input type="file" class="form-control mb-2" id="import-file" accept=".xlsx,.xls">
                 <button class="btn btn-primary btn-sm" id="btn-import">导入 Excel</button>
+                <div class="small text-muted mt-2">建议先下载模板，按模板表头填入历史数据后再导入。</div>
                 <div id="import-result" class="mt-2" style="display:none"></div>
             </div>
         </div>
 
         <!-- Change password -->
         <div class="card mb-3">
-            <div class="card-header">修改管理员密码</div>
+            <div class="card-header">修改当前管理员密码</div>
             <div class="card-body">
                 <div class="mb-2">
                     <input type="password" class="form-control form-control-sm" id="old-pwd" placeholder="当前密码">
@@ -29,6 +34,28 @@
                 </div>
                 <button class="btn btn-primary btn-sm" id="btn-change-pwd">修改密码</button>
                 <div id="pwd-result" class="mt-2" style="display:none"></div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">管理员账号管理</div>
+            <div class="card-body">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-5">
+                        <input type="text" class="form-control form-control-sm" id="new-admin-username" placeholder="新管理员用户名">
+                    </div>
+                    <div class="col-md-5">
+                        <input type="password" class="form-control form-control-sm" id="new-admin-password" placeholder="新管理员密码（至少 6 位）">
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary btn-sm w-100" id="btn-add-admin">添加管理员</button>
+                    </div>
+                </div>
+                <div id="admin-user-result" class="mb-2" style="display:none"></div>
+                <table class="table table-sm table-bordered mb-0">
+                    <thead><tr><th>用户名</th><th>创建时间</th><th style="width:80px">操作</th></tr></thead>
+                    <tbody id="admin-users-body"></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -111,6 +138,76 @@ async function deleteOption(id) {
     loadOptions();
 }
 
+async function loadAdminUsers() {
+    const res = await fetch('/api/admin/users');
+    const data = await res.json();
+    const tbody = document.getElementById('admin-users-body');
+    if (!res.ok) {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-danger">${data.msg || '管理员列表加载失败'}</td></tr>`;
+        return;
+    }
+    if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-muted text-center">暂无管理员</td></tr>';
+        return;
+    }
+    tbody.innerHTML = data.map(user => `
+        <tr>
+            <td>${user.username}</td>
+            <td>${user.created_at || '-'}</td>
+            <td><button class="btn btn-outline-danger btn-sm" onclick="deleteAdminUser(${user.id})">删除</button></td>
+        </tr>
+    `).join('');
+}
+
+document.getElementById('btn-add-admin').addEventListener('click', async function() {
+    const username = document.getElementById('new-admin-username').value.trim();
+    const password = document.getElementById('new-admin-password').value;
+    const el = document.getElementById('admin-user-result');
+    el.style.display = '';
+
+    if (!username || !password) {
+        el.innerHTML = '<div class="alert alert-warning">请输入用户名和密码</div>';
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/admin/users', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username, password}),
+        });
+        const data = await res.json();
+        if (res.ok) {
+            el.innerHTML = '<div class="alert alert-success">管理员添加成功</div>';
+            document.getElementById('new-admin-username').value = '';
+            document.getElementById('new-admin-password').value = '';
+            loadAdminUsers();
+        } else {
+            el.innerHTML = `<div class="alert alert-danger">${data.msg}</div>`;
+        }
+    } catch (e) {
+        el.innerHTML = `<div class="alert alert-danger">添加失败: ${e.message}</div>`;
+    }
+});
+
+async function deleteAdminUser(id) {
+    if (!confirm('确定删除该管理员？')) return;
+    const el = document.getElementById('admin-user-result');
+    el.style.display = '';
+    try {
+        const res = await fetch(`/api/admin/users/${id}`, {method: 'DELETE'});
+        const data = await res.json();
+        if (res.ok) {
+            el.innerHTML = '<div class="alert alert-success">管理员删除成功</div>';
+            loadAdminUsers();
+        } else {
+            el.innerHTML = `<div class="alert alert-danger">${data.msg}</div>`;
+        }
+    } catch (e) {
+        el.innerHTML = `<div class="alert alert-danger">删除失败: ${e.message}</div>`;
+    }
+}
+
 // Excel import
 document.getElementById('btn-import').addEventListener('click', async function() {
     const fileInput = document.getElementById('import-file');
@@ -123,9 +220,13 @@ document.getElementById('btn-import').addEventListener('click', async function()
         const el = document.getElementById('import-result');
         el.style.display = '';
         if (res.ok) {
-            let html = `<div class="alert alert-success">成功导入 ${data.imported} 条记录</div>`;
+            let html = `<div class="alert alert-success">成功导入 ${data.imported} 条记录`;
+            if (data.skipped_blank) {
+                html += `，跳过空白行 ${data.skipped_blank} 条`;
+            }
+            html += `</div>`;
             if (data.errors && data.errors.length > 0) {
-                html += `<div class="alert alert-warning"><strong>${data.total_errors} 条错误:</strong><br>${data.errors.join('<br>')}</div>`;
+                html += `<div class="alert alert-warning"><strong>发现 ${data.total_errors} 条导入错误</strong><br>${data.errors.join('<br>')}</div>`;
             }
             el.innerHTML = html;
         } else {
@@ -166,5 +267,6 @@ document.getElementById('btn-change-pwd').addEventListener('click', async functi
 });
 
 loadOptions();
+loadAdminUsers();
 </script>
 {% endblock %}

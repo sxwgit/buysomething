@@ -53,6 +53,11 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="form-control" id="admin-username" placeholder="请输入管理员用户名">
+                        <div class="form-text">首次默认管理员用户名通常为 `admin`</div>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label">密码</label>
                         <input type="password" class="form-control" id="admin-password" placeholder="请输入管理员密码">
                     </div>
@@ -75,12 +80,12 @@
         async function checkAdmin() {
             try {
                 const res = await fetch('/admin/check');
-                const data = await res.json();
-                return data.is_admin;
-            } catch { return false; }
+                return await res.json();
+            } catch { return {is_admin: false, username: ''}; }
         }
 
-        function updateAdminUI(isAdmin) {
+        function updateAdminUI(adminInfo) {
+            const isAdmin = !!adminInfo.is_admin;
             const btn = document.getElementById('btn-admin-toggle');
             const status = document.getElementById('admin-status');
             const settings = document.getElementById('nav-settings');
@@ -90,42 +95,47 @@
             if (isAdmin) {
                 btn.textContent = '退出管理';
                 btn.classList.replace('btn-outline-light', 'btn-warning');
+                status.textContent = `管理员：${adminInfo.username}`;
                 status.style.display = '';
                 settings.style.display = '';
             } else {
                 btn.textContent = '管理员登录';
                 btn.classList.replace('btn-warning', 'btn-outline-light');
+                status.textContent = '管理员模式';
                 status.style.display = 'none';
                 settings.style.display = 'none';
             }
         }
 
         document.getElementById('btn-admin-toggle').addEventListener('click', async function() {
-            const isAdmin = await checkAdmin();
-            if (isAdmin) {
+            const adminInfo = await checkAdmin();
+            if (adminInfo.is_admin) {
                 await fetch('/admin/logout', {method: 'POST'});
-                updateAdminUI(false);
+                updateAdminUI({is_admin: false, username: ''});
+                if (typeof onAdminChange === 'function') onAdminChange(false);
             } else {
                 new bootstrap.Modal(document.getElementById('adminLoginModal')).show();
             }
         });
 
         document.getElementById('btn-login').addEventListener('click', async function() {
+            const username = document.getElementById('admin-username').value.trim();
             const pwd = document.getElementById('admin-password').value;
             const errEl = document.getElementById('login-error');
             try {
                 const res = await fetch('/admin/login', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({password: pwd}),
+                    body: JSON.stringify({username, password: pwd}),
                 });
+                const data = await res.json();
                 if (res.ok) {
                     bootstrap.Modal.getInstance(document.getElementById('adminLoginModal')).hide();
-                    updateAdminUI(true);
+                    updateAdminUI({is_admin: true, username: data.username || username});
                     errEl.style.display = 'none';
                     if (typeof onAdminChange === 'function') onAdminChange(true);
                 } else {
-                    errEl.textContent = '密码错误';
+                    errEl.textContent = data.msg || '用户名或密码错误';
                     errEl.style.display = '';
                 }
             } catch {
@@ -135,7 +145,7 @@
         });
 
         // Check on load
-        checkAdmin().then(isAdmin => updateAdminUI(isAdmin));
+        checkAdmin().then(adminInfo => updateAdminUI(adminInfo));
     </script>
     {% block scripts %}{% endblock %}
 </body>

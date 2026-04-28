@@ -4,7 +4,7 @@ import sys
 from getpass import getpass
 
 from flask import Flask
-from models import db, DropdownOption, AdminPassword
+from models import db, DropdownOption, AdminPassword, AdminUser
 from config import Config
 
 
@@ -36,7 +36,7 @@ def init():
             db.session.commit()
             print('Default dropdown options seeded.')
 
-        # Set admin password if not set
+        # Set legacy admin password if not set
         if AdminPassword.query.first() is None:
             if len(sys.argv) > 1:
                 password = sys.argv[1]
@@ -50,6 +50,17 @@ def init():
             print(f'Admin password set.')
         else:
             print('Admin password already exists.')
+
+        if AdminUser.query.first() is None:
+            legacy = AdminPassword.query.first()
+            admin_user = AdminUser(username='admin')
+            if legacy:
+                admin_user.password_hash = legacy.password_hash
+            else:
+                admin_user.set_password(password if 'password' in locals() else 'admin123')
+            db.session.add(admin_user)
+            db.session.commit()
+            print('Default admin user created: admin')
 
         # Ensure upload directory exists
         upload_dir = app.config['UPLOAD_FOLDER']

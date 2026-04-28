@@ -7,36 +7,94 @@
     <div class="card-body py-2">
         <div class="row g-2 align-items-end">
             <div class="col-auto">
-                <select class="form-select form-select-sm" id="filter-year">
-                    <option value="">全部年份</option>
-                </select>
+                <label class="form-label small mb-1">年份</label>
+                <div class="dropdown filter-dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle filter-dropdown-btn" type="button" data-bs-toggle="dropdown" id="filter-year-btn">
+                        全部年份
+                    </button>
+                    <div class="dropdown-menu p-2 filter-dropdown-menu" id="filter-year-menu"></div>
+                </div>
             </div>
             <div class="col-auto">
-                <select class="form-select form-select-sm" id="filter-month">
-                    <option value="">全部月份</option>
-                    {% for m in range(1, 13) %}<option value="{{ m }}">{{ m }}月</option>{% endfor %}
-                </select>
+                <label class="form-label small mb-1">月份</label>
+                <div class="dropdown filter-dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle filter-dropdown-btn" type="button" data-bs-toggle="dropdown" id="filter-month-btn">
+                        全部月份
+                    </button>
+                    <div class="dropdown-menu p-2 filter-dropdown-menu" id="filter-month-menu"></div>
+                </div>
             </div>
             <div class="col-auto">
-                <select class="form-select form-select-sm" id="filter-dept">
-                    <option value="">全部部门</option>
-                </select>
+                <label class="form-label small mb-1">部门</label>
+                <div class="dropdown filter-dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle filter-dropdown-btn" type="button" data-bs-toggle="dropdown" id="filter-department-btn">
+                        全部部门
+                    </button>
+                    <div class="dropdown-menu p-2 filter-dropdown-menu" id="filter-department-menu"></div>
+                </div>
             </div>
             <div class="col-auto">
-                <select class="form-select form-select-sm" id="filter-status">
-                    <option value="">全部状态</option>
-                </select>
+                <label class="form-label small mb-1">状态</label>
+                <div class="dropdown filter-dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle filter-dropdown-btn" type="button" data-bs-toggle="dropdown" id="filter-status-btn">
+                        全部状态
+                    </button>
+                    <div class="dropdown-menu p-2 filter-dropdown-menu" id="filter-status-menu"></div>
+                </div>
             </div>
             <div class="col-auto">
-                <input type="text" class="form-control form-control-sm" id="filter-keyword" placeholder="搜索物品/人员/厂家">
+                <label class="form-label small mb-1">搜索</label>
+                <input type="text" class="form-control form-control-sm" id="filter-keyword" placeholder="支持物品/人员/工号/原因等模糊搜索">
             </div>
             <div class="col-auto">
+                <label class="form-label small mb-1 d-block">&nbsp;</label>
                 <button class="btn btn-primary btn-sm" id="btn-search">查询</button>
                 <button class="btn btn-outline-secondary btn-sm" id="btn-reset">重置</button>
             </div>
             <div class="col-auto ms-auto admin-only" style="display:none">
+                <label class="form-label small mb-1 d-block">&nbsp;</label>
                 <button class="btn btn-success btn-sm" id="btn-add">新增采购申请</button>
                 <button class="btn btn-outline-primary btn-sm" id="btn-batch-status" disabled>批量更新状态</button>
+            </div>
+        </div>
+        <div class="small text-muted mt-2">年份、月份、部门、状态都支持多选；点击选项后会自动刷新，不选表示查看全部。</div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3 col-sm-6">
+        <div class="card page-kpi-card h-100">
+            <div class="card-body">
+                <div class="text-muted small">当前记录数</div>
+                <div class="page-kpi-value" id="summary-total-count">-</div>
+                <div class="small text-muted">当前筛选结果</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="card page-kpi-card h-100">
+            <div class="card-body">
+                <div class="text-muted small">当前总金额</div>
+                <div class="page-kpi-value" id="summary-total-amount">-</div>
+                <div class="small text-muted">当前筛选结果</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="card page-kpi-card h-100">
+            <div class="card-body">
+                <div class="text-muted small">待跟进条数</div>
+                <div class="page-kpi-value text-warning" id="summary-pending-count">-</div>
+                <div class="small text-muted">状态不为“已完成”</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="card page-kpi-card h-100">
+            <div class="card-body">
+                <div class="text-muted small">待跟进金额</div>
+                <div class="page-kpi-value text-warning" id="summary-pending-amount">-</div>
+                <div class="small text-muted">便于优先级判断</div>
             </div>
         </div>
     </div>
@@ -49,9 +107,7 @@
             <thead>
                 <tr>
                     <th><input type="checkbox" id="check-all"></th>
-                    <th>年份</th><th>月份</th><th>资产分类</th><th>物品名称</th>
-                    <th>生产厂家</th><th>物品型号</th><th>数量</th><th>单价</th><th>总价</th>
-                    <th>需求部门</th><th>需求人</th><th>工号</th><th>资产编码</th>
+                    <th>期间</th><th>采购内容</th><th>需求信息</th><th>数量</th><th>单价</th><th>总金额</th>
                     <th>申请原因</th><th>备注</th><th>状态</th><th>操作</th>
                 </tr>
             </thead>
@@ -142,6 +198,21 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                 <button type="button" class="btn btn-primary" id="btn-save">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">采购详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3" id="detail-grid"></div>
             </div>
         </div>
     </div>

@@ -1,7 +1,7 @@
 import os
 import uuid
 from flask import Blueprint, request, jsonify, current_app, send_file
-from models import db, Attachment
+from models import db, Attachment, DropdownOption
 from routes.admin import is_admin
 
 attachment_bp = Blueprint('attachment', __name__)
@@ -39,6 +39,40 @@ def list_attachments():
         grouped[key]['files'].append(a.to_dict())
 
     return jsonify(list(grouped.values()))
+
+
+@attachment_bp.route('/api/attachments/coverage', methods=['GET'])
+def attachment_coverage():
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
+
+    if not year or not month:
+        return jsonify({'msg': '请选择年份和月份'}), 400
+
+    departments = DropdownOption.query.filter_by(category='department') \
+        .order_by(DropdownOption.sort_order, DropdownOption.id).all()
+    dept_names = [d.value for d in departments]
+
+    counts = db.session.query(
+        Attachment.department,
+        db.func.count(Attachment.id).label('file_count')
+    ).filter_by(year=year, month=month).group_by(Attachment.department).all()
+    count_map = {item.department: int(item.file_count or 0) for item in counts}
+
+    coverage = [{
+        'department': dept,
+        'uploaded': count_map.get(dept, 0) > 0,
+        'file_count': count_map.get(dept, 0),
+    } for dept in dept_names]
+
+    return jsonify({
+        'year': year,
+        'month': month,
+        'total_departments': len(coverage),
+        'uploaded_departments': sum(1 for item in coverage if item['uploaded']),
+        'missing_departments': sum(1 for item in coverage if not item['uploaded']),
+        'items': coverage,
+    })
 
 
 @attachment_bp.route('/api/attachments/upload', methods=['POST'])

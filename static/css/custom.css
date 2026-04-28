@@ -5,3 +5,29 @@ table.table-sm th, table.table-sm td { white-space: nowrap; font-size: 13px; pad
 td.text-wrap { white-space: normal; max-width: 200px; }
 .navbar-brand { font-weight: 600; }
 #procurement-table_wrapper .dataTables_filter, #procurement-table_wrapper .dataTables_length { display: none; }
+.filter-dropdown-btn { min-width: 120px; text-align: left; display: inline-flex; justify-content: space-between; align-items: center; }
+.filter-dropdown-menu { min-width: 180px; max-height: 260px; overflow-y: auto; }
+.filter-checklist { display: flex; flex-direction: column; gap: 6px; }
+.filter-check-item { display: flex; align-items: center; font-size: 13px; padding: 4px 0; cursor: pointer; }
+.page-kpi-card { border: 1px solid #e7eef7; }
+.page-kpi-value { font-size: 1.65rem; font-weight: 700; line-height: 1.2; margin: 8px 0; }
+.list-main-text { font-weight: 600; color: #1f2a37; }
+.list-sub-text { color: #6b7280; font-size: 12px; margin-top: 2px; white-space: normal; }
+.inline-editable-view { min-height: 30px; padding: 4px 6px; border-radius: 6px; cursor: pointer; transition: background-color .15s ease; white-space: normal; }
+.inline-editable-view:hover { background: #f4f7fb; }
+.inline-editor.textarea { min-width: 220px; }
+.inline-row-editor { min-width: 180px; }
+.inline-edit-select { min-width: 120px; }
+.inline-edit-grid { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
+.detail-field { border: 1px solid #edf1f5; border-radius: 10px; padding: 12px 14px; background: #fafbfd; height: 100%; }
+.detail-label { color: #6b7280; font-size: 12px; margin-bottom: 6px; }
+.detail-value { color: #1f2a37; font-weight: 500; white-space: pre-wrap; word-break: break-word; }
+.report-kpi-card { border: 1px solid #e7eef7; }
+.report-kpi-value { font-size: 1.8rem; font-weight: 700; line-height: 1.2; margin: 8px 0; }
+.status-summary-card { border-radius: 10px; padding: 14px 16px; background: #f8f9fb; border: 1px solid #e9edf3; }
+.status-summary-pending { border-color: #bfe3ff; background: #f3f9ff; }
+.status-summary-progress { border-color: #ffe08a; background: #fff9e8; }
+.status-summary-done { border-color: #c7efd3; background: #f1fbf4; }
+.attachment-coverage-card { border-radius: 10px; padding: 14px 16px; border: 1px solid #e9edf3; background: #f8f9fb; }
+.attachment-coverage-card.is-uploaded { border-color: #c7efd3; background: #f1fbf4; }
+.attachment-coverage-card.is-missing { border-color: #ffd0d0; background: #fff5f5; }
