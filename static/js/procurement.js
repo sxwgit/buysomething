@@ -192,13 +192,11 @@ function initTable() {
             info: '第 _START_ - _END_ 条，共 _TOTAL_ 条',
             infoEmpty: '当前没有数据',
             paginate: {
-                first: '首页',
-                previous: '‹ 上页',
-                next: '下页 ›',
-                last: '末页',
+                previous: '上一页',
+                next: '下一页',
             },
         },
-        pagingType: 'full_numbers',
+        pagingType: 'simple_numbers',
         pageLength: 20,
         drawCallback: function() {
             updateRowActionVisibility(currentAdmin);
@@ -212,26 +210,35 @@ function initTable() {
             }
             paginate.style.display = '';
 
-            // Remove old jump if exists
             const oldJump = paginate.querySelector('.pagination-jump');
             if (oldJump) oldJump.remove();
 
-            // Add page jump
             const jump = document.createElement('div');
             jump.className = 'pagination-jump';
-            jump.innerHTML = `第 <input type="number" min="1" max="${info.pages}" value="${info.page + 1}"> / ${info.pages} 页 <button class="btn-jump">跳转</button>`;
+            jump.innerHTML = `
+                <span>跳至</span>
+                <input type="number" min="1" max="${info.pages}" value="${info.page + 1}" aria-label="跳转页码">
+                <span>/ ${info.pages}</span>
+                <button type="button">跳转</button>
+            `;
             paginate.appendChild(jump);
 
-            jump.querySelector('.btn-jump').addEventListener('click', function() {
-                const val = parseInt(jump.querySelector('input').value);
+            const input = jump.querySelector('input');
+            const button = jump.querySelector('button');
+            const goToPage = function() {
+                const val = parseInt(input.value, 10);
                 if (val >= 1 && val <= info.pages) {
                     table.page(val - 1).draw('page');
+                } else {
+                    showToast(`请输入 1 到 ${info.pages} 之间的页码`, 'warning');
+                    input.value = info.page + 1;
                 }
-            });
-
-            jump.querySelector('input').addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    jump.querySelector('.btn-jump').click();
+            };
+            button.addEventListener('click', goToPage);
+            input.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    goToPage();
                 }
             });
         }
@@ -432,7 +439,7 @@ function initFormEvents() {
             });
             const data = await res.json();
             if (!res.ok) {
-                alert(data.msg || '状态更新失败');
+                showToast(data.msg || '状态更新失败', 'danger');
                 select.value = originalValue;
                 return;
             }
@@ -440,9 +447,10 @@ function initFormEvents() {
             select.dataset.currentValue = status;
             table.ajax.reload(null, false);
             loadSummary();
+            showToast('状态已更新', 'success', 1800);
         } catch (error) {
             select.value = originalValue;
-            alert(`状态更新失败: ${error.message}`);
+            showToast(`状态更新失败: ${error.message}`, 'danger');
         } finally {
             select.disabled = false;
         }
@@ -474,6 +482,7 @@ $('#btn-add').click(function() {
 });
 
 $('#btn-save').click(async function() {
+    const saveBtn = this;
     const id = $('#edit-id').val();
     const data = {
         year: parseInt($('#f-year').val(), 10),
@@ -495,7 +504,7 @@ $('#btn-save').click(async function() {
 
     if (!data.asset_category || !data.item_name || !data.budget_qty || Number.isNaN(data.unit_price) ||
         !data.department || !data.requester_name || !data.requester_id || !data.reason || !data.year || !data.month) {
-        alert('请填写完整的必填字段');
+        showToast('请填写完整的必填字段', 'warning');
         return;
     }
 
@@ -503,6 +512,7 @@ $('#btn-save').click(async function() {
     const method = id ? 'PUT' : 'POST';
 
     try {
+        setButtonBusy(saveBtn, true, '保存中...');
         const res = await fetch(url, {
             method,
             headers: { 'Content-Type': 'application/json' },
@@ -511,14 +521,17 @@ $('#btn-save').click(async function() {
 
         if (!res.ok) {
             const err = await res.json();
-            alert(err.msg || '保存失败');
+            showToast(err.msg || '保存失败', 'danger');
             return;
         }
 
         formModal.hide();
         reloadTable();
+        showToast(id ? '采购记录已更新' : '采购记录已创建', 'success');
     } catch (error) {
-        alert(`保存失败: ${error.message}`);
+        showToast(`保存失败: ${error.message}`, 'danger');
+    } finally {
+        setButtonBusy(saveBtn, false);
     }
 });
 
@@ -537,7 +550,7 @@ window.viewRow = async function(id) {
         $('#detail-grid').html(buildDetailHtml(item));
         detailModal.show();
     } catch (error) {
-        alert(`记录读取失败: ${error.message}`);
+        showToast(`记录读取失败: ${error.message}`, 'danger');
     }
 };
 
@@ -565,7 +578,7 @@ window.editRow = async function(id) {
         updateTotalPrice();
         formModal.show();
     } catch (error) {
-        alert(`记录读取失败: ${error.message}`);
+        showToast(`记录读取失败: ${error.message}`, 'danger');
     }
 };
 
@@ -606,12 +619,13 @@ window.deleteRow = async function(id) {
         const res = await fetch(`/api/procurements/${id}`, { method: 'DELETE' });
         if (!res.ok) {
             const err = await res.json();
-            alert(err.msg || '删除失败');
+            showToast(err.msg || '删除失败', 'danger');
             return;
         }
         reloadTable();
+        showToast('采购记录已删除', 'success');
     } catch (error) {
-        alert(`删除失败: ${error.message}`);
+        showToast(`删除失败: ${error.message}`, 'danger');
     }
 };
 
@@ -685,7 +699,7 @@ async function saveInlineEdit(element) {
 
     if (field === 'budget_qty') {
         if (!value || Number(value) <= 0 || !Number.isInteger(Number(value))) {
-            alert('数量必须是大于 0 的整数');
+            showToast('数量必须是大于 0 的整数', 'warning');
             editor.focus();
             return;
         }
@@ -694,7 +708,7 @@ async function saveInlineEdit(element) {
 
     if (field === 'unit_price') {
         if (value === '' || Number.isNaN(Number(value)) || Number(value) < 0) {
-            alert('单价必须是大于等于 0 的数字');
+            showToast('单价必须是大于等于 0 的数字', 'warning');
             editor.focus();
             return;
         }
@@ -702,7 +716,7 @@ async function saveInlineEdit(element) {
     }
 
     if (field === 'reason' && !value) {
-        alert('申请原因不能为空');
+        showToast('申请原因不能为空', 'warning');
         editor.focus();
         return;
     }
@@ -716,7 +730,7 @@ async function saveInlineEdit(element) {
         });
         const data = await res.json();
         if (!res.ok) {
-            alert(data.msg || '保存失败');
+            showToast(data.msg || '保存失败', 'danger');
             element.dataset.saving = '0';
             editor.focus();
             return;
@@ -727,7 +741,7 @@ async function saveInlineEdit(element) {
         loadSummary();
     } catch (error) {
         element.dataset.saving = '0';
-        alert(`保存失败: ${error.message}`);
+        showToast(`保存失败: ${error.message}`, 'danger');
         editor.focus();
     }
 }
@@ -753,7 +767,7 @@ $('#btn-batch-confirm').click(async function() {
     const status = $('#batch-status').val();
 
     if (!ids.length) {
-        alert('请至少选择一条记录');
+        showToast('请至少选择一条记录', 'warning');
         return;
     }
 
@@ -766,14 +780,15 @@ $('#btn-batch-confirm').click(async function() {
 
         if (!res.ok) {
             const err = await res.json();
-            alert(err.msg || '批量更新失败');
+            showToast(err.msg || '批量更新失败', 'danger');
             return;
         }
 
         batchModal.hide();
         reloadTable();
+        showToast(`已批量更新 ${ids.length} 条记录`, 'success');
     } catch (error) {
-        alert(`批量更新失败: ${error.message}`);
+        showToast(`批量更新失败: ${error.message}`, 'danger');
     }
 });
 

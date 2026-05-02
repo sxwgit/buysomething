@@ -43,7 +43,7 @@ async function loadCoverage() {
 
     if (!year || !month) {
         $('#coverage-summary').text('请选择年份和月份');
-        $('#coverage-grid').html('<div class="text-muted">请选择年份和月份后查看</div>');
+        $('#coverage-grid').html('<div class="empty-state">请选择年份和月份后查看附件完整性</div>');
         return;
     }
 
@@ -51,22 +51,51 @@ async function loadCoverage() {
     const data = await res.json();
     if (!res.ok) {
         $('#coverage-summary').text(data.msg || '完整性数据加载失败');
-        $('#coverage-grid').html('<div class="text-danger">完整性数据加载失败</div>');
+        $('#coverage-grid').html('<div class="empty-state">完整性数据加载失败</div>');
         return;
     }
 
+    const completion = data.total_departments
+        ? (data.uploaded_departments / data.total_departments) * 100
+        : 0;
     $('#coverage-summary').text(
-        `已上传 ${data.uploaded_departments} 个部门，缺失 ${data.missing_departments} 个部门`
+        `覆盖率 ${formatPercent(completion)}，已上传 ${data.uploaded_departments} 个部门，缺失 ${data.missing_departments} 个部门`
     );
 
-    $('#coverage-grid').html(data.items.map(item => `
-        <div class="col-md-3 col-sm-6">
-            <div class="attachment-coverage-card ${item.uploaded ? 'is-uploaded' : 'is-missing'}">
-                <div class="fw-semibold">${escHtml(item.department)}</div>
-                <div class="small">${item.uploaded ? `已上传 ${item.file_count} 个附件` : '未上传附件'}</div>
+    $('#coverage-grid').html(`
+        <div class="coverage-summary-rich">
+            <div class="coverage-stat">
+                <div class="coverage-stat-label">已上传部门</div>
+                <div class="coverage-stat-value">${data.uploaded_departments}</div>
+            </div>
+            <div class="coverage-stat">
+                <div class="coverage-stat-label">缺失部门</div>
+                <div class="coverage-stat-value">${data.missing_departments}</div>
+            </div>
+            <div class="coverage-stat">
+                <div class="coverage-stat-label">当前覆盖率</div>
+                <div class="coverage-stat-value">${formatPercent(completion)}</div>
             </div>
         </div>
-    `).join(''));
+        <div class="mb-3">
+            <div class="coverage-progress">
+                <div class="coverage-progress-bar" style="width:${completion}%"></div>
+            </div>
+        </div>
+        <div class="row g-2">
+            ${data.items.map(item => `
+                <div class="col-md-3 col-sm-6">
+                    <div class="attachment-coverage-card ${item.uploaded ? 'is-uploaded' : 'is-missing'}">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="coverage-state-dot"></span>
+                            <div class="fw-semibold">${escHtml(item.department)}</div>
+                        </div>
+                        <div class="small mt-2">${item.uploaded ? `已上传 ${item.file_count} 个附件` : '未上传附件'}</div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `);
 }
 
 async function loadAttachments() {
@@ -82,30 +111,55 @@ async function loadAttachments() {
     const isAdmin = adminInfo.is_admin;
 
     const container = $('#attachment-list');
+    const totalFiles = data.reduce((sum, group) => sum + Number(group.count || 0), 0);
+    $('#attachment-group-meta').text(data.length ? `共 ${data.length} 个分组 · ${totalFiles} 个附件` : '当前无归档分组');
     if (data.length === 0) {
-        container.html('<div class="text-muted text-center py-4">当前筛选下暂无附件数据</div>');
+        container.html('<div class="empty-state">当前筛选下暂无附件数据</div>');
         return;
     }
 
-    container.html(data.map(g => `
-        <div class="card mb-2">
-            <div class="card-header py-2 d-flex justify-content-between">
-                <span>${g.year}年${g.month}月 - ${escHtml(g.department)} (${g.count}个附件)</span>
-            </div>
-            <div class="card-body p-0">
-                <table class="table table-sm table-borderless mb-0">
-                    ${g.files.map(f => `
-                        <tr>
-                            <td><a href="/api/attachments/${f.id}/download">${escHtml(f.original_name)}</a></td>
-                            <td class="text-muted" style="width:150px">${f.upload_time}</td>
-                            <td style="width:70px">${formatSize(f.file_size)}</td>
-                            ${isAdmin ? `<td style="width:60px"><button class="btn btn-sm btn-outline-danger" onclick="deleteAttachment(${f.id})">删除</button></td>` : ''}
-                        </tr>
-                    `).join('')}
-                </table>
-            </div>
+    container.html(`
+        <div class="attachment-archive-grid">
+            ${data.map(g => `
+                <div class="attachment-group-card">
+                    <div class="group-header">
+                        <div>
+                            <h3 class="group-title">${g.year}年${g.month}月 · ${escHtml(g.department)}</h3>
+                            <div class="group-subtitle">按部门归档的采购附件</div>
+                        </div>
+                        <span class="file-count-badge">${g.count} 个附件</span>
+                    </div>
+                    <div class="file-list">
+                        ${g.files.map(f => `
+                            <div class="file-row">
+                                <div class="file-row-main">
+                                    <span class="file-type-badge">${getFileExtension(f.original_name)}</span>
+                                    <div class="min-w-0">
+                                        <a class="file-name" href="/api/attachments/${f.id}/download">${escHtml(f.original_name)}</a>
+                                        ${f.description ? `<div class="file-desc">${escHtml(f.description)}</div>` : ''}
+                                        <div class="file-meta">
+                                            <span class="file-meta-chip">${formatSize(f.file_size)}</span>
+                                            <span class="file-meta-chip">${escHtml(f.upload_time || '-')}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="file-row-actions">
+                                    <a class="btn btn-sm btn-outline-primary" href="/api/attachments/${f.id}/download">下载</a>
+                                    ${isAdmin ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteAttachment(${f.id})">删除</button>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('')}
         </div>
-    `).join(''));
+    `);
+}
+
+function getFileExtension(filename) {
+    const parts = String(filename || '').split('.');
+    if (parts.length <= 1) return 'FILE';
+    return parts.pop().slice(0, 4).toUpperCase();
 }
 
 function formatSize(bytes) {
@@ -128,8 +182,9 @@ $('#btn-upload').click(() => uploadModal.show());
 
 $('#btn-do-upload').click(async function() {
     const files = document.getElementById('upload-file').files;
+    const uploadBtn = this;
     if (!files.length) {
-        alert('请选择文件');
+        showToast('请选择文件后再上传', 'warning');
         return;
     }
 
@@ -137,30 +192,37 @@ $('#btn-do-upload').click(async function() {
     const month = $('#upload-month').val();
     const dept = $('#upload-dept').val();
     if (!year || !month || !dept) {
-        alert('请选择年月和部门');
+        showToast('请选择年份、月份和部门', 'warning');
         return;
     }
 
     let ok = 0;
     let fail = 0;
 
-    for (const file of files) {
-        const fd = new FormData();
-        fd.append('file', file);
-        fd.append('year', year);
-        fd.append('month', month);
-        fd.append('department', dept);
-        const res = await fetch('/api/attachments/upload', { method: 'POST', body: fd });
-        res.ok ? ok++ : fail++;
+    setButtonBusy(uploadBtn, true, '上传中...');
+    try {
+        for (const file of files) {
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('year', year);
+            fd.append('month', month);
+            fd.append('department', dept);
+            const desc = document.getElementById('upload-description').value.trim();
+            if (desc) fd.append('description', desc);
+            const res = await fetch('/api/attachments/upload', { method: 'POST', body: fd });
+            res.ok ? ok++ : fail++;
+        }
+
+        uploadModal.hide();
+        showToast(`上传完成：成功 ${ok} 个${fail ? `，失败 ${fail} 个` : ''}`, fail ? 'warning' : 'success', 3200);
+
+        $('#filter-year').val(year);
+        $('#filter-month').val(month);
+        await Promise.all([loadCoverage(), loadAttachments()]);
+    } finally {
+        setButtonBusy(uploadBtn, false);
     }
-
-    uploadModal.hide();
-    alert(`上传完成: 成功 ${ok} 个${fail ? ', 失败 ' + fail + ' 个' : ''}`);
-
-    $('#filter-year').val(year);
-    $('#filter-month').val(month);
-    await Promise.all([loadCoverage(), loadAttachments()]);
-}
+});
 
 window.deleteAttachment = async function(id) {
     if (!confirm('确定删除该附件？')) return;
@@ -168,10 +230,11 @@ window.deleteAttachment = async function(id) {
     const res = await fetch(`/api/attachments/${id}`, { method: 'DELETE' });
     if (!res.ok) {
         const err = await res.json();
-        alert(err.msg || '删除失败');
+        showToast(err.msg || '删除失败', 'danger');
         return;
     }
 
+    showToast('附件已删除', 'success');
     await Promise.all([loadCoverage(), loadAttachments()]);
 };
 

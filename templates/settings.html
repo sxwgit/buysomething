@@ -2,10 +2,17 @@
 {% block title %}系统设置 - 采购管理系统{% endblock %}
 
 {% block content %}
+<section class="page-hero">
+    <div>
+        <div class="page-eyebrow">System Settings</div>
+        <h1 class="page-title">系统设置</h1>
+    </div>
+</section>
+
 <div class="row">
         <div class="col-md-6">
             <!-- Import section -->
-            <div class="card mb-3">
+            <div class="card panel-card mb-3">
             <div class="card-header">导入与导出数据</div>
             <div class="card-body">
                 <div class="d-flex gap-2 flex-wrap mb-3">
@@ -20,7 +27,7 @@
         </div>
 
         <!-- Change password -->
-        <div class="card mb-3">
+        <div class="card panel-card mb-3">
             <div class="card-header">修改当前管理员密码</div>
             <div class="card-body">
                 <div class="mb-2">
@@ -37,7 +44,7 @@
             </div>
         </div>
 
-        <div class="card mb-3 root-admin-only">
+        <div class="card panel-card mb-3 root-admin-only">
             <div class="card-header">管理员账号管理（仅根管理员可见）</div>
             <div class="card-body">
                 <div class="row g-2 mb-3">
@@ -52,17 +59,19 @@
                     </div>
                 </div>
                 <div id="admin-user-result" class="mb-2" style="display:none"></div>
-                <table class="table table-sm table-bordered mb-0">
-                    <thead><tr><th>用户名</th><th>创建时间</th><th style="width:80px">操作</th></tr></thead>
-                    <tbody id="admin-users-body"></tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead><tr><th>用户名</th><th>创建时间</th><th style="width:80px">操作</th></tr></thead>
+                        <tbody id="admin-users-body"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="col-md-6">
         <!-- Dropdown options management -->
-        <div class="card">
+        <div class="card panel-card">
             <div class="card-header">下拉选项管理</div>
             <div class="card-body">
                 <div class="mb-3">
@@ -72,10 +81,12 @@
                         <option value="status">采购状态</option>
                     </select>
                 </div>
-                <table class="table table-sm table-bordered">
-                    <thead><tr><th>选项值</th><th>排序</th><th>操作</th></tr></thead>
-                    <tbody id="options-body"></tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead><tr><th>选项值</th><th>排序</th><th>操作</th></tr></thead>
+                        <tbody id="options-body"></tbody>
+                    </table>
+                </div>
                 <div class="input-group input-group-sm mt-2">
                     <input type="text" class="form-control" id="new-option-value" placeholder="新增选项">
                     <button class="btn btn-outline-primary" id="btn-add-option">添加</button>
@@ -135,6 +146,7 @@ async function updateOption(id) {
 async function deleteOption(id) {
     if (!confirm('确定删除该选项？')) return;
     await fetch(`/api/options/${id}`, {method: 'DELETE'});
+    showToast('选项已删除', 'success');
     loadOptions();
 }
 
@@ -199,6 +211,7 @@ async function deleteAdminUser(id) {
         const data = await res.json();
         if (res.ok) {
             el.innerHTML = '<div class="alert alert-success">管理员删除成功</div>';
+            showToast('管理员删除成功', 'success');
             loadAdminUsers();
         } else {
             el.innerHTML = `<div class="alert alert-danger">${data.msg}</div>`;
@@ -211,7 +224,7 @@ async function deleteAdminUser(id) {
 // Excel import
 document.getElementById('btn-import').addEventListener('click', async function() {
     const fileInput = document.getElementById('import-file');
-    if (!fileInput.files.length) { alert('请选择文件'); return; }
+    if (!fileInput.files.length) { showToast('请选择文件后再导入', 'warning'); return; }
     const formData = new FormData();
     formData.append('file', fileInput.files[0]);
     try {
@@ -225,6 +238,7 @@ document.getElementById('btn-import').addEventListener('click', async function()
                 html += `，跳过空白行 ${data.skipped_blank} 条`;
             }
             html += `</div>`;
+            showToast(`导入完成，成功导入 ${data.imported} 条记录`, data.total_errors ? 'warning' : 'success', 3200);
             if (data.errors && data.errors.length > 0) {
                 html += `<div class="alert alert-warning"><strong>发现 ${data.total_errors} 条导入错误</strong><br>${data.errors.join('<br>')}</div>`;
             }
@@ -258,6 +272,7 @@ document.getElementById('btn-change-pwd').addEventListener('click', async functi
         const data = await res.json();
         if (res.ok) {
             el.innerHTML = '<div class="alert alert-success">密码修改成功</div>';
+            showToast('密码修改成功', 'success');
         } else {
             el.innerHTML = `<div class="alert alert-danger">${data.msg}</div>`;
         }

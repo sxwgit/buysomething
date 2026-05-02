@@ -2,7 +2,14 @@
 {% block title %}附件管理 - 采购管理系统{% endblock %}
 
 {% block content %}
-<div class="card mb-3">
+<section class="page-hero">
+    <div>
+        <div class="page-eyebrow">Attachment Coverage</div>
+        <h1 class="page-title">附件管理</h1>
+    </div>
+</section>
+
+<div class="card panel-card toolbar-card mb-3">
     <div class="card-body py-2">
         <div class="row g-2 align-items-end">
             <div class="col-auto">
@@ -26,7 +33,7 @@
     </div>
 </div>
 
-<div class="card mb-3">
+<div class="card panel-card mb-3">
     <div class="card-header py-2 d-flex justify-content-between align-items-center">
         <span>月度附件完整性</span>
         <span class="small text-muted" id="coverage-summary">请选择年份和月份</span>
@@ -35,6 +42,16 @@
         <div class="row g-2" id="coverage-grid">
             <div class="text-muted">请选择年份和月份后查看</div>
         </div>
+    </div>
+</div>
+
+<div class="section-head">
+    <div>
+        <h2>归档附件</h2>
+        <p>按年月和部门自动分组，适合快速定位审批邮件、报价单和采购材料。</p>
+    </div>
+    <div class="section-head-meta">
+        <span class="meta-pill" id="attachment-group-meta">等待加载</span>
     </div>
 </div>
 

@@ -9,28 +9,35 @@
     <link href="/static/css/custom.css" rel="stylesheet">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">采购管理系统</a>
+    <nav class="navbar navbar-expand-lg navbar-dark app-navbar">
+        <div class="container-fluid app-container">
+            <a class="navbar-brand app-brand" href="/">
+                <span class="app-brand-mark">PM</span>
+                <span class="app-brand-text">
+                    <strong>采购管理系统</strong>
+                    <small>Procurement Workspace</small>
+                </span>
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+                <ul class="navbar-nav me-auto app-nav-links">
                     <li class="nav-item"><a class="nav-link {% if active_page == 'index' %}active{% endif %}" href="/">采购列表</a></li>
                     <li class="nav-item"><a class="nav-link {% if active_page == 'attachments' %}active{% endif %}" href="/attachments">附件管理</a></li>
                     <li class="nav-item"><a class="nav-link {% if active_page == 'reports' %}active{% endif %}" href="/reports">透视报表</a></li>
                     <li class="nav-item"><a class="nav-link {% if active_page == 'settings' %}active{% endif %}" href="/settings" id="nav-settings" style="display:none">系统设置</a></li>
                 </ul>
-                <div class="d-flex align-items-center">
-                    <span id="admin-status" class="text-light me-2" style="display:none">管理员模式</span>
-                    <button id="btn-admin-toggle" class="btn btn-outline-light btn-sm">管理员登录</button>
+                <div class="d-flex align-items-center app-admin-bar">
+                    <span id="admin-status" class="app-admin-status me-2" style="display:none">管理员模式</span>
+                    <button id="btn-admin-toggle" class="btn btn-outline-light btn-sm app-admin-btn">管理员登录</button>
                 </div>
             </div>
         </div>
     </nav>
 
-    <div class="container-fluid mt-3">
+    <div class="app-shell">
+        <div class="container-fluid app-container app-content">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
         <div class="alert alert-{{ category }} alert-dismissible fade show">
@@ -41,7 +48,10 @@
         {% endwith %}
 
         {% block content %}{% endblock %}
+        </div>
     </div>
+
+    <div class="toast-container position-fixed top-0 end-0 p-3 app-toast-stack" id="app-toast-stack"></div>
 
     <!-- Admin Login Modal -->
     <div class="modal fade" id="adminLoginModal" tabindex="-1">
@@ -91,6 +101,8 @@
             const btn = document.getElementById('btn-admin-toggle');
             const status = document.getElementById('admin-status');
             const settings = document.getElementById('nav-settings');
+            document.body.classList.toggle('is-admin', isAdmin);
+            document.body.classList.toggle('is-root-admin', isRoot);
             document.querySelectorAll('.admin-only').forEach(el => {
                 el.style.display = isAdmin ? '' : 'none';
             });

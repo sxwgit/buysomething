@@ -2,8 +2,15 @@
 {% block title %}采购列表 - 采购管理系统{% endblock %}
 
 {% block content %}
+<section class="page-hero">
+    <div>
+        <div class="page-eyebrow">Procurement Overview</div>
+        <h1 class="page-title">采购列表</h1>
+    </div>
+</section>
+
 <!-- Filter bar -->
-<div class="card mb-3">
+<div class="card panel-card toolbar-card mb-3">
     <div class="card-body py-2">
         <div class="row g-2 align-items-end">
             <div class="col-auto">
@@ -101,18 +108,29 @@
 </div>
 
 <!-- Data table -->
-<div class="card">
+<div class="card panel-card data-card">
     <div class="card-body">
-        <table id="procurement-table" class="table table-sm table-hover" style="width:100%">
-            <thead>
-                <tr>
-                    <th><input type="checkbox" id="check-all"></th>
-                    <th>期间</th><th>采购内容</th><th>需求信息</th><th>数量</th><th>单价</th><th>总金额</th>
-                    <th>申请原因</th><th>备注</th><th>状态</th><th>操作</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+        <div class="section-head compact">
+            <div>
+                <h2>采购明细</h2>
+                <p>支持服务端分页、按条件筛选以及关键字段的行内编辑。</p>
+            </div>
+            <div class="section-head-meta">
+                <span class="meta-pill">数量、单价、原因、备注、状态可直接修改</span>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table id="procurement-table" class="table table-sm table-hover" style="width:100%">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="check-all"></th>
+                        <th>期间</th><th>采购内容</th><th>需求信息</th><th>数量</th><th>单价</th><th>总金额</th>
+                        <th>申请原因</th><th>备注</th><th>状态</th><th>操作</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
 </div>
 

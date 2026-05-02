@@ -23,7 +23,7 @@ $('#btn-query').click(loadReports);
 async function loadReports() {
     const year = $('#filter-year').val();
     if (!year) {
-        alert('请选择年份');
+        showToast('请选择年份后再查询', 'warning');
         return;
     }
 
@@ -42,7 +42,7 @@ async function loadOverview(params) {
     const res = await fetch('/api/reports/overview?' + params);
     const data = await res.json();
     if (!res.ok) {
-        alert(data.msg || '业务看板加载失败');
+        showToast(data.msg || '业务看板加载失败', 'danger');
         return;
     }
 
@@ -86,7 +86,7 @@ async function loadSummary(params) {
     const res = await fetch('/api/reports/department-summary?' + params);
     const data = await res.json();
     if (!res.ok) {
-        alert(data.msg || '部门汇总加载失败');
+        showToast(data.msg || '部门汇总加载失败', 'danger');
         return;
     }
 
@@ -94,6 +94,14 @@ async function loadSummary(params) {
     let totalCount = 0;
     let totalQty = 0;
     let totalAmount = 0;
+
+    if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">当前条件下暂无部门汇总数据</td></tr>';
+        document.getElementById('summary-count').textContent = 0;
+        document.getElementById('summary-qty').textContent = 0;
+        document.getElementById('summary-amount').textContent = formatCurrency(0);
+        return;
+    }
 
     tbody.innerHTML = data.map(d => {
         totalCount += d.count;
@@ -116,18 +124,34 @@ async function loadRatio(params) {
     const res = await fetch('/api/reports/department-ratio?' + params);
     const data = await res.json();
     if (!res.ok) {
-        alert(data.msg || '部门占比加载失败');
+        showToast(data.msg || '部门占比加载失败', 'danger');
         return;
     }
 
+    const rows = [...data].sort((a, b) => b.value - a.value);
+    if (!rows.length) {
+        ratioChart.clear();
+        ratioChart.setOption({
+            title: {
+                text: '当前条件下暂无部门占比数据',
+                left: 'center',
+                top: 'middle',
+                textStyle: { color: '#7b8897', fontSize: 14, fontWeight: 500 },
+            },
+        });
+        return;
+    }
+    ratioChart = ensureChart('ratio-chart');
+
     ratioChart.setOption({
-        title: { text: '各部门采购金额占比', left: 'center' },
+        color: ['#0f6c78', '#19808c', '#2798a5', '#4fb7bd', '#7dcccf', '#a8dfe2', '#d3eff1'],
         tooltip: { trigger: 'item', formatter: '{b}: ¥{c} ({d}%)' },
-        legend: { orient: 'vertical', left: 'left', top: 'middle' },
+        legend: { orient: 'vertical', right: 0, top: 'middle', textStyle: { color: '#536576' } },
         series: [{
             type: 'pie',
-            radius: ['30%', '60%'],
-            data: data,
+            radius: ['38%', '68%'],
+            center: ['38%', '50%'],
+            data: rows,
             emphasis: {
                 itemStyle: {
                     shadowBlur: 10,
@@ -135,7 +159,7 @@ async function loadRatio(params) {
                     shadowColor: 'rgba(0,0,0,0.5)'
                 }
             },
-            label: { formatter: '{b}\n{d}%' },
+            label: { formatter: '{b}\n{d}%', color: '#31404f' },
         }]
     });
 }
@@ -144,22 +168,53 @@ async function loadCategory(params) {
     const res = await fetch('/api/reports/category-distribution?' + params);
     const data = await res.json();
     if (!res.ok) {
-        alert(data.msg || '分类分布加载失败');
+        showToast(data.msg || '分类分布加载失败', 'danger');
         return;
     }
 
+    const rows = [...data].sort((a, b) => b.total_amount - a.total_amount);
+    if (!rows.length) {
+        categoryChart.clear();
+        categoryChart.setOption({
+            title: {
+                text: '当前条件下暂无分类分布数据',
+                left: 'center',
+                top: 'middle',
+                textStyle: { color: '#7b8897', fontSize: 14, fontWeight: 500 },
+            },
+        });
+        return;
+    }
+    categoryChart = ensureChart('category-chart');
+
     categoryChart.setOption({
-        title: { text: '资产分类采购分布', left: 'center' },
+        color: ['#0f6c78', '#f59f00'],
         tooltip: { trigger: 'axis' },
-        legend: { data: ['采购数量', '采购金额'], top: 30 },
-        xAxis: { type: 'category', data: data.map(d => d.category) },
+        legend: { data: ['采购数量', '采购金额'], top: 0, textStyle: { color: '#536576' } },
+        grid: { left: 40, right: 24, top: 52, bottom: 34, containLabel: true },
+        xAxis: {
+            type: 'category',
+            data: rows.map(d => d.category),
+            axisLabel: { color: '#536576', interval: 0, rotate: rows.length > 5 ? 18 : 0 },
+            axisLine: { lineStyle: { color: '#cfd9e3' } },
+        },
         yAxis: [
-            { type: 'value', name: '数量' },
-            { type: 'value', name: '金额 (元)' },
+            {
+                type: 'value',
+                name: '数量',
+                axisLabel: { color: '#536576' },
+                splitLine: { lineStyle: { color: '#e8eff5' } },
+            },
+            {
+                type: 'value',
+                name: '金额 (元)',
+                axisLabel: { color: '#536576' },
+                splitLine: { show: false },
+            },
         ],
         series: [
-            { name: '采购数量', type: 'bar', data: data.map(d => d.total_qty) },
-            { name: '采购金额', type: 'bar', yAxisIndex: 1, data: data.map(d => d.total_amount) },
+            { name: '采购数量', type: 'bar', barMaxWidth: 28, borderRadius: [8, 8, 0, 0], data: rows.map(d => d.total_qty) },
+            { name: '采购金额', type: 'bar', barMaxWidth: 28, borderRadius: [8, 8, 0, 0], yAxisIndex: 1, data: rows.map(d => d.total_amount) },
         ]
     });
 }
@@ -180,6 +235,15 @@ function statusClass(status) {
         '采购中': 'status-summary-progress',
         '已完成': 'status-summary-done',
     }[status] || '';
+}
+
+function ensureChart(id) {
+    const el = document.getElementById(id);
+    const existing = echarts.getInstanceByDom(el);
+    if (existing) {
+        return existing;
+    }
+    return echarts.init(el);
 }
 
 window.onDataVersionChange = function() {
