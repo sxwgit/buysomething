@@ -10,4 +10,4 @@ build/
 .venv/
 .claude/
 node_modules/
-frontend/dist/
+# frontend/dist/ is tracked for deployment

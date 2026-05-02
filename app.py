@@ -1,17 +1,20 @@
-from flask import Flask, render_template
+import os
+from flask import Flask, send_from_directory
 from sqlalchemy import text
 from models import db
 from config import Config
 from routes.procurement import procurement_bp
 from routes.attachment import attachment_bp
 from routes.report import report_bp
-from routes.admin import admin_bp, ensure_admin_users, is_admin
+from routes.admin import admin_bp, ensure_admin_users
 from routes.settings import settings_bp
 from routes.data_import import data_import_bp
 
+DIST_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'frontend', 'dist')
+
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder=os.path.join(DIST_DIR, 'assets'), static_url_path='/assets')
     app.config.from_object(Config)
     db.init_app(app)
 
@@ -42,21 +45,7 @@ def create_app():
 
     @app.route('/')
     def index():
-        return render_template('index.html', active_page='index')
-
-    @app.route('/attachments')
-    def attachments():
-        return render_template('attachments.html', active_page='attachments')
-
-    @app.route('/reports')
-    def reports():
-        return render_template('reports.html', active_page='reports')
-
-    @app.route('/settings')
-    def settings():
-        if not is_admin():
-            return render_template('index.html', active_page='index')
-        return render_template('settings.html', active_page='settings')
+        return send_from_directory(DIST_DIR, 'index.html')
 
     return app
 
