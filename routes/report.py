@@ -1,7 +1,7 @@
 from io import BytesIO
 from flask import Blueprint, request, jsonify, send_file
 from models import db, Procurement
-from sqlalchemy import func
+from sqlalchemy import func, case
 from openpyxl import Workbook
 
 from routes.admin import is_admin
@@ -89,27 +89,35 @@ def procurement_overview():
         return jsonify({'msg': '请选择年份'}), 400
 
     base = build_base_query(year, month)
-    records = base.all()
+    base_ids = base.with_entities(Procurement.id)
 
-    total_count = len(records)
-    total_amount = round(sum(float(r.total_price or 0) for r in records), 2)
-    pending_count = sum(1 for r in records if r.status != '已完成')
-    pending_amount = round(sum(float(r.total_price or 0) for r in records if r.status != '已完成'), 2)
+    # Aggregate stats in one SQL query
+    stats = db.session.query(
+        func.count(Procurement.id).label('total_count'),
+        func.coalesce(func.sum(Procurement.total_price), 0).label('total_amount'),
+        func.sum(case((Procurement.status != '已完成', 1), else_=0)).label('pending_count'),
+        func.coalesce(func.sum(case((Procurement.status != '已完成', Procurement.total_price), else_=0)), 0).label('pending_amount'),
+    ).filter(Procurement.id.in_(base_ids)).first()
 
+    # Status breakdown
+    status_rows = db.session.query(
+        Procurement.status,
+        func.count(Procurement.id).label('count'),
+        func.coalesce(func.sum(Procurement.total_price), 0).label('amount'),
+    ).filter(Procurement.id.in_(base_ids)).group_by(Procurement.status).all()
+
+    status_map = {r.status: {'count': int(r.count), 'amount': round(float(r.amount or 0), 2)} for r in status_rows}
     status_summary = []
     for status in ['已申请', '采购中', '已完成']:
-        matched = [r for r in records if r.status == status]
-        status_summary.append({
-            'status': status,
-            'count': len(matched),
-            'amount': round(sum(float(r.total_price or 0) for r in matched), 2),
-        })
+        info = status_map.get(status, {'count': 0, 'amount': 0.0})
+        status_summary.append({'status': status, 'count': info['count'], 'amount': info['amount']})
 
+    # Top department
     top_department = db.session.query(
         Procurement.department,
         func.count(Procurement.id).label('count'),
         func.sum(Procurement.total_price).label('total_amount'),
-    ).filter(Procurement.id.in_(base.with_entities(Procurement.id))) \
+    ).filter(Procurement.id.in_(base_ids)) \
         .group_by(Procurement.department) \
         .order_by(func.sum(Procurement.total_price).desc()) \
         .first()
@@ -117,10 +125,10 @@ def procurement_overview():
     top_record = base.order_by(Procurement.total_price.desc()).first()
 
     return jsonify({
-        'total_count': total_count,
-        'total_amount': total_amount,
-        'pending_count': pending_count,
-        'pending_amount': pending_amount,
+        'total_count': int(stats.total_count or 0),
+        'total_amount': round(float(stats.total_amount or 0), 2),
+        'pending_count': int(stats.pending_count or 0),
+        'pending_amount': round(float(stats.pending_amount or 0), 2),
         'status_summary': status_summary,
         'top_department': {
             'department': top_department.department,

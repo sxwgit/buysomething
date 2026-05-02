@@ -174,22 +174,6 @@ function exportReport(type) {
     window.location.href = `/api/reports/export?type=${type}&year=${year}${month ? '&month=' + month : ''}`;
 }
 
-function formatCurrency(value) {
-    return '¥' + Number(value || 0).toLocaleString('zh-CN', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
-
-function escapeHtml(str) {
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
 function statusClass(status) {
     return {
         '已申请': 'status-summary-pending',

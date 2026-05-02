@@ -6,6 +6,10 @@ from routes.admin import is_admin
 
 attachment_bp = Blueprint('attachment', __name__)
 
+ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx', '.xls', '.xlsx', '.msg', '.eml',
+                      '.zip', '.rar', '.7z', '.png', '.jpg', '.jpeg', '.gif',
+                      '.ppt', '.pptx', '.txt', '.csv', '.wps'}
+
 
 @attachment_bp.route('/api/attachments', methods=['GET'])
 def list_attachments():
@@ -23,7 +27,6 @@ def list_attachments():
 
     attachments = query.order_by(Attachment.upload_time.desc()).all()
 
-    # Group by department
     grouped = {}
     for a in attachments:
         key = f"{a.year}-{a.month:02d}-{a.department}"
@@ -87,15 +90,21 @@ def upload_attachment():
     year = request.form.get('year', type=int)
     month = request.form.get('month', type=int)
     department = request.form.get('department')
+    description = (request.form.get('description') or '').strip()
 
     if not all([year, month, department]):
         return jsonify({'msg': '年月和部门不能为空'}), 400
 
+    if '/' in department or '\\' in department or '..' in department:
+        return jsonify({'msg': '部门名称不合法'}), 400
+
     if file.filename == '':
         return jsonify({'msg': '文件名为空'}), 400
 
-    # Save file
-    ext = os.path.splitext(file.filename)[1]
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        return jsonify({'msg': f'不支持的文件类型: {ext}'}), 400
+
     saved_name = f"{uuid.uuid4().hex}{ext}"
     save_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], str(year), f"{month:02d}", department)
     os.makedirs(save_dir, exist_ok=True)
@@ -105,11 +114,11 @@ def upload_attachment():
 
     att = Attachment(
         year=year, month=month, department=department,
-        file_name=saved_name, original_name=file.filename, file_size=file_size,
+        file_name=saved_name, original_name=file.filename,
+        file_size=file_size, description=description,
     )
     db.session.add(att)
     db.session.commit()
-
     return jsonify(att.to_dict()), 201
 
 

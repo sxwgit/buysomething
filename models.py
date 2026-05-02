@@ -78,6 +78,7 @@ class Attachment(db.Model):
     file_name = db.Column(db.String(200), nullable=False)
     original_name = db.Column(db.String(500), nullable=False)
     file_size = db.Column(db.Integer)
+    description = db.Column(db.String(500), default='')
     upload_time = db.Column(db.DateTime, default=datetime.now)
 
     def to_dict(self):
@@ -89,6 +90,7 @@ class Attachment(db.Model):
             'file_name': self.file_name,
             'original_name': self.original_name,
             'file_size': self.file_size,
+            'description': self.description or '',
             'upload_time': self.upload_time.strftime('%Y-%m-%d %H:%M') if self.upload_time else '',
         }
 
