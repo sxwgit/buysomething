@@ -136,6 +136,7 @@ class AdminUser(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(100), nullable=False, unique=True)
     password_hash = db.Column(db.String(500), nullable=False)
+    is_root = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     def set_password(self, password):
@@ -148,5 +149,6 @@ class AdminUser(db.Model):
         return {
             'id': self.id,
             'username': self.username,
+            'is_root': self.is_root,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else '',
         }

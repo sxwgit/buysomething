@@ -86,16 +86,20 @@
 
         function updateAdminUI(adminInfo) {
             const isAdmin = !!adminInfo.is_admin;
+            const isRoot = !!adminInfo.is_root;
             const btn = document.getElementById('btn-admin-toggle');
             const status = document.getElementById('admin-status');
             const settings = document.getElementById('nav-settings');
             document.querySelectorAll('.admin-only').forEach(el => {
                 el.style.display = isAdmin ? '' : 'none';
             });
+            document.querySelectorAll('.root-admin-only').forEach(el => {
+                el.style.display = isRoot ? '' : 'none';
+            });
             if (isAdmin) {
                 btn.textContent = '退出管理';
                 btn.classList.replace('btn-outline-light', 'btn-warning');
-                status.textContent = `管理员：${adminInfo.username}`;
+                status.textContent = `管理员：${adminInfo.username}${isRoot ? ' (根)' : ''}`;
                 status.style.display = '';
                 settings.style.display = '';
             } else {

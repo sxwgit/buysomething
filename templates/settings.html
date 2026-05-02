@@ -37,8 +37,8 @@
             </div>
         </div>
 
-        <div class="card mb-3">
-            <div class="card-header">管理员账号管理</div>
+        <div class="card mb-3 root-admin-only">
+            <div class="card-header">管理员账号管理（仅根管理员可见）</div>
             <div class="card-body">
                 <div class="row g-2 mb-3">
                     <div class="col-md-5">
@@ -152,7 +152,7 @@ async function loadAdminUsers() {
     }
     tbody.innerHTML = data.map(user => `
         <tr>
-            <td>${user.username}</td>
+            <td>${user.username}${user.is_root ? ' <span class="badge bg-primary">根管理员</span>' : ''}</td>
             <td>${user.created_at || '-'}</td>
             <td><button class="btn btn-outline-danger btn-sm" onclick="deleteAdminUser(${user.id})">删除</button></td>
         </tr>

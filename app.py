@@ -1,12 +1,11 @@
-from flask import Flask, render_template, request, jsonify
-from werkzeug.security import check_password_hash, generate_password_hash
+from flask import Flask, render_template
 from sqlalchemy import text
-from models import AdminPassword, AdminUser, db
+from models import db
 from config import Config
 from routes.procurement import procurement_bp
 from routes.attachment import attachment_bp
 from routes.report import report_bp
-from routes.admin import admin_bp
+from routes.admin import admin_bp, ensure_admin_users, is_admin
 from routes.settings import settings_bp
 from routes.data_import import data_import_bp
 
@@ -25,14 +24,7 @@ def create_app():
 
     with app.app_context():
         db.create_all()
-
-        if AdminUser.query.first() is None:
-            legacy = AdminPassword.query.first()
-            if legacy:
-                admin_user = AdminUser(username='admin')
-                admin_user.password_hash = legacy.password_hash
-                db.session.add(admin_user)
-                db.session.commit()
+        ensure_admin_users()
 
         db.session.execute(text(
             'CREATE INDEX IF NOT EXISTS idx_procurement_year_month ON procurement(year, month)'
@@ -62,27 +54,9 @@ def create_app():
 
     @app.route('/settings')
     def settings():
-        from routes.admin import is_admin
         if not is_admin():
             return render_template('index.html', active_page='index')
         return render_template('settings.html', active_page='settings')
-
-    @app.route('/api/admin/change-password', methods=['POST'])
-    def change_password():
-        from routes.admin import current_admin_user, is_admin
-        if not is_admin():
-            return jsonify({'msg': '需要管理员权限'}), 403
-        data = request.get_json() or {}
-        old_pwd = data.get('old_password', '')
-        new_pwd = data.get('new_password', '')
-        if len(new_pwd) < 6:
-            return jsonify({'msg': '新密码至少 6 位'}), 400
-        admin = current_admin_user()
-        if not admin or not admin.check_password(old_pwd):
-            return jsonify({'msg': '当前密码错误'}), 400
-        admin.set_password(new_pwd)
-        db.session.commit()
-        return jsonify({'ok': True})
 
     return app
 

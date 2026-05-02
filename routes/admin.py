@@ -9,31 +9,28 @@ admin_bp = Blueprint('admin', __name__)
 
 def ensure_admin_users():
     if AdminUser.query.first() is not None:
+        # Ensure at least one root admin exists
+        if not AdminUser.query.filter_by(is_root=True).first():
+            first = AdminUser.query.order_by(AdminUser.id.asc()).first()
+            if first:
+                first.is_root = True
+                db.session.commit()
         return
 
     legacy = AdminPassword.query.first()
     if legacy:
-        admin_user = AdminUser(username='admin')
+        admin_user = AdminUser(username='admin', is_root=True)
         admin_user.password_hash = legacy.password_hash
         db.session.add(admin_user)
         db.session.commit()
 
 
 def current_admin_user():
-    if not is_admin():
-        return None
-    admin_user_id = session.get('admin_user_id')
-    if not admin_user_id:
-        return None
-    return AdminUser.query.get(admin_user_id)
-
-
-def is_admin():
     if 'is_admin' not in session:
-        return False
+        return None
     expire_str = session.get('admin_expire')
     if not expire_str:
-        return False
+        return None
     try:
         expire = datetime.fromisoformat(expire_str)
         if datetime.now() > expire:
@@ -41,9 +38,9 @@ def is_admin():
             session.pop('admin_expire', None)
             session.pop('admin_user_id', None)
             session.pop('admin_username', None)
-            return False
+            return None
     except (ValueError, TypeError):
-        return False
+        return None
 
     admin_user = AdminUser.query.get(session.get('admin_user_id'))
     if not admin_user:
@@ -51,8 +48,17 @@ def is_admin():
         session.pop('admin_expire', None)
         session.pop('admin_user_id', None)
         session.pop('admin_username', None)
-        return False
-    return True
+        return None
+    return admin_user
+
+
+def is_admin():
+    return current_admin_user() is not None
+
+
+def is_root_admin():
+    user = current_admin_user()
+    return user is not None and user.is_root
 
 
 @admin_bp.route('/admin/login', methods=['GET', 'POST'])
@@ -73,7 +79,7 @@ def login():
         session['admin_user_id'] = admin.id
         session['admin_username'] = admin.username
         session['admin_expire'] = (datetime.now() + timedelta(hours=current_app.config.get('ADMIN_SESSION_HOURS', 2))).isoformat()
-        return jsonify({'ok': True, 'username': admin.username})
+        return jsonify({'ok': True, 'username': admin.username, 'is_root': admin.is_root})
     return jsonify({'ok': False, 'msg': '用户名或密码错误'}), 403
 
 
@@ -92,13 +98,14 @@ def check():
     return jsonify({
         'is_admin': bool(user),
         'username': user.username if user else '',
+        'is_root': user.is_root if user else False,
     })
 
 
 @admin_bp.route('/api/admin/users', methods=['GET'])
 def list_admin_users():
-    if not is_admin():
-        return jsonify({'msg': '需要管理员权限'}), 403
+    if not is_root_admin():
+        return jsonify({'msg': '需要根管理员权限'}), 403
     ensure_admin_users()
     users = AdminUser.query.order_by(AdminUser.id.asc()).all()
     return jsonify([u.to_dict() for u in users])
@@ -106,8 +113,8 @@ def list_admin_users():
 
 @admin_bp.route('/api/admin/users', methods=['POST'])
 def create_admin_user():
-    if not is_admin():
-        return jsonify({'msg': '需要管理员权限'}), 403
+    if not is_root_admin():
+        return jsonify({'msg': '需要根管理员权限'}), 403
     ensure_admin_users()
 
     data = request.get_json() or {}
@@ -130,17 +137,35 @@ def create_admin_user():
 
 @admin_bp.route('/api/admin/users/<int:user_id>', methods=['DELETE'])
 def delete_admin_user(user_id):
-    if not is_admin():
-        return jsonify({'msg': '需要管理员权限'}), 403
+    if not is_root_admin():
+        return jsonify({'msg': '需要根管理员权限'}), 403
 
     current_user = current_admin_user()
     if current_user and current_user.id == user_id:
         return jsonify({'msg': '不能删除当前登录的管理员'}), 400
 
-    if AdminUser.query.count() <= 1:
-        return jsonify({'msg': '系统至少需要保留一个管理员'}), 400
+    if AdminUser.query.filter(AdminUser.is_root == True).count() <= 1 and \
+       AdminUser.query.get(user_id) and AdminUser.query.get(user_id).is_root:
+        return jsonify({'msg': '系统至少需要保留一个根管理员'}), 400
 
     user = AdminUser.query.get_or_404(user_id)
     db.session.delete(user)
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@admin_bp.route('/api/admin/change-password', methods=['POST'])
+def change_password():
+    admin = current_admin_user()
+    if not admin:
+        return jsonify({'msg': '需要管理员权限'}), 403
+    data = request.get_json() or {}
+    old_pwd = data.get('old_password', '')
+    new_pwd = data.get('new_password', '')
+    if len(new_pwd) < 6:
+        return jsonify({'msg': '新密码至少 6 位'}), 400
+    if not admin.check_password(old_pwd):
+        return jsonify({'msg': '当前密码错误'}), 400
+    admin.set_password(new_pwd)
     db.session.commit()
     return jsonify({'ok': True})
