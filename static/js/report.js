@@ -197,3 +197,7 @@ function statusClass(status) {
         '已完成': 'status-summary-done',
     }[status] || '';
 }
+
+window.onDataVersionChange = function() {
+    loadReports();
+};

@@ -758,3 +758,10 @@ $('#btn-batch-confirm').click(async function() {
         alert(`批量更新失败: ${error.message}`);
     }
 });
+
+window.onDataVersionChange = function() {
+    if (table) {
+        table.ajax.reload(null, false);
+        loadSummary();
+    }
+};

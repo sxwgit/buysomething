@@ -146,6 +146,30 @@
 
         // Check on load
         checkAdmin().then(adminInfo => updateAdminUI(adminInfo));
+
+        // Data version polling for real-time sync
+        (function() {
+            let currentVersion = null;
+            let pollTimer = null;
+
+            async function pollVersion() {
+                try {
+                    const res = await fetch('/api/data-version');
+                    const data = await res.json();
+                    if (currentVersion !== null && data.version !== currentVersion) {
+                        if (typeof onDataVersionChange === 'function') {
+                            onDataVersionChange();
+                        }
+                    }
+                    currentVersion = data.version;
+                } catch {}
+            }
+
+            // Fetch initial version
+            pollVersion();
+            // Poll every 30 seconds
+            pollTimer = setInterval(pollVersion, 30000);
+        })();
     </script>
     {% block scripts %}{% endblock %}
 </body>

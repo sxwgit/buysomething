@@ -3,7 +3,7 @@ from io import BytesIO
 from flask import Blueprint, request, jsonify, send_file
 from openpyxl import Workbook, load_workbook
 
-from models import db, DropdownOption, Procurement
+from models import db, DropdownOption, Procurement, bump_data_version
 from routes.admin import is_admin
 
 data_import_bp = Blueprint('data_import', __name__)
@@ -260,6 +260,9 @@ def import_excel():
 
         db.session.commit()
         wb.close()
+
+        if imported > 0:
+            bump_data_version()
 
         return jsonify({
             'imported': imported,

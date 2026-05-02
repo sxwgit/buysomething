@@ -2,7 +2,7 @@ from datetime import datetime
 
 from flask import Blueprint, request, jsonify
 from sqlalchemy import case, func, or_
-from models import db, Procurement
+from models import db, Procurement, bump_data_version, get_data_version
 from routes.admin import is_admin
 
 procurement_bp = Blueprint('procurement', __name__)
@@ -104,6 +104,11 @@ def build_procurement_query(args):
             query = query.filter(or_(*[field.like(kw) for field in searchable_fields]))
 
     return query
+
+
+@procurement_bp.route('/api/data-version', methods=['GET'])
+def data_version():
+    return jsonify({'version': get_data_version()})
 
 
 @procurement_bp.route('/api/procurements/filter-metadata', methods=['GET'])
@@ -208,6 +213,7 @@ def create_procurement():
     )
     db.session.add(p)
     db.session.commit()
+    bump_data_version()
     return jsonify(p.to_dict()), 201
 
 
@@ -243,6 +249,7 @@ def update_procurement(pid):
     if 'budget_qty' in data or 'unit_price' in data:
         p.total_price = p.budget_qty * p.unit_price
     db.session.commit()
+    bump_data_version()
     return jsonify(p.to_dict())
 
 
@@ -253,6 +260,7 @@ def delete_procurement(pid):
     p = Procurement.query.filter_by(id=pid, is_deleted=0).first_or_404()
     p.is_deleted = 1
     db.session.commit()
+    bump_data_version()
     return jsonify({'ok': True})
 
 
@@ -269,4 +277,5 @@ def batch_update_status():
         {'status': status}, synchronize_session=False
     )
     db.session.commit()
+    bump_data_version()
     return jsonify({'ok': True, 'updated': len(ids)})

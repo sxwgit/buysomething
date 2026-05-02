@@ -174,3 +174,7 @@ window.deleteAttachment = async function(id) {
 
     await Promise.all([loadCoverage(), loadAttachments()]);
 };
+
+window.onDataVersionChange = function() {
+    loadAttachments();
+};

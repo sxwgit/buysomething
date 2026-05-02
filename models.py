@@ -5,6 +5,21 @@ from werkzeug.security import generate_password_hash, check_password_hash
 db = SQLAlchemy()
 
 
+def bump_data_version():
+    row = DataVersion.query.first()
+    if row:
+        row.version = (row.version or 0) + 1
+    else:
+        row = DataVersion(version=1)
+        db.session.add(row)
+    db.session.commit()
+
+
+def get_data_version():
+    row = DataVersion.query.first()
+    return row.version if row else 0
+
+
 class Procurement(db.Model):
     __tablename__ = 'procurement'
 
@@ -100,6 +115,13 @@ class AdminPassword(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     password_hash = db.Column(db.String(500), nullable=False)
+
+
+class DataVersion(db.Model):
+    __tablename__ = 'data_version'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    version = db.Column(db.Integer, nullable=False, default=1)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
