@@ -4,6 +4,8 @@ from models import db, Procurement
 from sqlalchemy import func
 from openpyxl import Workbook
 
+from routes.admin import is_admin
+
 report_bp = Blueprint('report', __name__)
 
 
@@ -136,6 +138,8 @@ def procurement_overview():
 
 @report_bp.route('/api/reports/export')
 def export_excel():
+    if not is_admin():
+        return jsonify({'msg': '需要管理员权限'}), 403
     report_type = request.args.get('type', 'department-summary')
     year = request.args.get('year', type=int)
     month = request.args.get('month', type=int)

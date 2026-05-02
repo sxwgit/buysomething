@@ -62,6 +62,9 @@ def create_app():
 
     @app.route('/settings')
     def settings():
+        from routes.admin import is_admin
+        if not is_admin():
+            return render_template('index.html', active_page='index')
         return render_template('settings.html', active_page='settings')
 
     @app.route('/api/admin/change-password', methods=['POST'])

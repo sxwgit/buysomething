@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from flask import Blueprint, jsonify, render_template, request, session
+from flask import Blueprint, jsonify, render_template, request, session, current_app
 
 from models import AdminPassword, AdminUser, db
 
@@ -72,7 +72,7 @@ def login():
         session['is_admin'] = True
         session['admin_user_id'] = admin.id
         session['admin_username'] = admin.username
-        session['admin_expire'] = (datetime.now() + timedelta(hours=2)).isoformat()
+        session['admin_expire'] = (datetime.now() + timedelta(hours=current_app.config.get('ADMIN_SESSION_HOURS', 2))).isoformat()
         return jsonify({'ok': True, 'username': admin.username})
     return jsonify({'ok': False, 'msg': '用户名或密码错误'}), 403
 

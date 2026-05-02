@@ -215,7 +215,7 @@ def create_procurement():
 def update_procurement(pid):
     if not is_admin():
         return jsonify({'msg': '需要管理员权限'}), 403
-    p = Procurement.query.get_or_404(pid)
+    p = Procurement.query.filter_by(id=pid, is_deleted=0).first_or_404()
 
     data = request.get_json() or {}
     for field in ['year', 'month', 'asset_category', 'item_name', 'manufacturer',
@@ -250,7 +250,7 @@ def update_procurement(pid):
 def delete_procurement(pid):
     if not is_admin():
         return jsonify({'msg': '需要管理员权限'}), 403
-    p = Procurement.query.get_or_404(pid)
+    p = Procurement.query.filter_by(id=pid, is_deleted=0).first_or_404()
     p.is_deleted = 1
     db.session.commit()
     return jsonify({'ok': True})
@@ -265,7 +265,7 @@ def batch_update_status():
     status = data.get('status')
     if not ids or not status:
         return jsonify({'msg': '参数不完整'}), 400
-    Procurement.query.filter(Procurement.id.in_(ids)).update(
+    Procurement.query.filter(Procurement.id.in_(ids), Procurement.is_deleted == 0).update(
         {'status': status}, synchronize_session=False
     )
     db.session.commit()
