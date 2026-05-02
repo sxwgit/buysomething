@@ -189,23 +189,51 @@ function initTable() {
             processing: '正在加载数据...',
             zeroRecords: '没有匹配的采购记录',
             emptyTable: '暂无采购数据',
-            info: '显示第 _START_ 到 _END_ 条，共 _TOTAL_ 条',
+            info: '第 _START_ - _END_ 条，共 _TOTAL_ 条',
             infoEmpty: '当前没有数据',
             paginate: {
                 first: '首页',
-                previous: '上一页',
-                next: '下一页',
+                previous: '‹ 上页',
+                next: '下页 ›',
                 last: '末页',
             },
         },
-        pagingType: 'simple_numbers',
+        pagingType: 'full_numbers',
         pageLength: 20,
         drawCallback: function() {
             updateRowActionVisibility(currentAdmin);
+            const info = table.page.info();
             const paginate = document.querySelector('#procurement-table_wrapper .dataTables_paginate');
-            if (paginate) {
-                paginate.style.display = table.page.info().pages > 1 ? '' : 'none';
+            if (!paginate) return;
+
+            if (info.pages <= 1) {
+                paginate.style.display = 'none';
+                return;
             }
+            paginate.style.display = '';
+
+            // Remove old jump if exists
+            const oldJump = paginate.querySelector('.pagination-jump');
+            if (oldJump) oldJump.remove();
+
+            // Add page jump
+            const jump = document.createElement('div');
+            jump.className = 'pagination-jump';
+            jump.innerHTML = `第 <input type="number" min="1" max="${info.pages}" value="${info.page + 1}"> / ${info.pages} 页 <button class="btn-jump">跳转</button>`;
+            paginate.appendChild(jump);
+
+            jump.querySelector('.btn-jump').addEventListener('click', function() {
+                const val = parseInt(jump.querySelector('input').value);
+                if (val >= 1 && val <= info.pages) {
+                    table.page(val - 1).draw('page');
+                }
+            });
+
+            jump.querySelector('input').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    jump.querySelector('.btn-jump').click();
+                }
+            });
         }
     });
 }
