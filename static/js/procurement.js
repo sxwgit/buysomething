@@ -22,6 +22,16 @@ $(document).ready(async function() {
     await initFilters();
     initTable();
     initFormEvents();
+    // Default to current year
+    const currentYear = String(new Date().getFullYear());
+    if (selectedYears.length === 0) {
+        const yearCheckbox = document.querySelector(`#filter-year-menu input[value="${currentYear}"]`);
+        if (yearCheckbox) {
+            yearCheckbox.checked = true;
+            selectedYears = [currentYear];
+            updateMultiSelectButton('year', '全部年份');
+        }
+    }
     await loadSummary();
 });
 
@@ -191,14 +201,11 @@ function initTable() {
         pagingType: 'simple_numbers',
         pageLength: 20,
         drawCallback: function() {
-            checkAdmin().then(info => {
-                currentAdmin = !!info.is_admin;
-                updateRowActionVisibility(info.is_admin);
-                const paginate = document.querySelector('#procurement-table_wrapper .dataTables_paginate');
-                if (paginate) {
-                    paginate.style.display = table.page.info().pages > 1 ? '' : 'none';
-                }
-            });
+            updateRowActionVisibility(currentAdmin);
+            const paginate = document.querySelector('#procurement-table_wrapper .dataTables_paginate');
+            if (paginate) {
+                paginate.style.display = table.page.info().pages > 1 ? '' : 'none';
+            }
         }
     });
 }
