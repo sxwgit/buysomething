@@ -1,0 +1,20 @@
+[Unit]
+Description=<服务描述，如：XX管理系统>
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/services/<服务目录名>
+Environment="PATH=/opt/services/<服务目录名>/.venv/bin"
+ExecStart=<启动命令，如：/opt/services/xxx/.venv/bin/gunicorn -c gunicorn.conf.py "app:create_app()">
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+ReadWritePaths=/opt/services/<服务目录名>/data /opt/services/<服务目录名>/uploads
+
+[Install]
+WantedBy=multi-user.target
