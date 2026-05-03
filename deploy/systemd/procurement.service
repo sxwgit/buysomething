@@ -1,0 +1,24 @@
+[Unit]
+Description=Procurement Management System
+After=network.target
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/services/procurement
+Environment="PATH=/opt/services/procurement/.venv/bin"
+ExecStart=/opt/services/procurement/.venv/bin/gunicorn -c gunicorn.conf.py "app:create_app()"
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# 安全限制
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/services/procurement/data /opt/services/procurement/uploads
+
+[Install]
+WantedBy=multi-user.target
